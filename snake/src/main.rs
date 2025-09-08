@@ -103,7 +103,7 @@ fn main() {
     snake[0].velocidad = 1.0;
     snake[0].direccion = Direccion::Arriba;
 
-    let mut buffer = snake[0].posicion.clone();
+    let mut buffer = snake[0].previa.clone();
     loop {
         pantalla.print();
         if let Some(direccion) = entrada_controles() {
@@ -114,12 +114,13 @@ fn main() {
         //     buffer = element.previa.clone();
         //     pantalla.cambiar_pixel(&element.posicion, 'o');
         // }
-        for indice in (0..=snake.len() - 2) {
-            snake[indice].actualizar();
-            buffer = snake[indice].previa.clone();
-            snake[indice + 1].posicion = buffer;
-        }
 
+        // for indice in 1..snake.len() {
+        //     snake[indice].actualizar();
+        //     snake[indice].posicion = buffer.clone();
+        //     buffer = snake[indice].previa.clone();
+        //     pantalla.cambiar_pixel(&snake[indice].posicion, 'o');
+        // }
         // pantalla.cambiar_pixel(&snake[0].posicion, 'o');
         pantalla.cambiar_pixel(&snake[snake.len() - 1].previa, FONDO);
 
