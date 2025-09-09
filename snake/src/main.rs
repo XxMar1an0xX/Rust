@@ -4,16 +4,13 @@ use std::time::Duration;
 const RESOLUTION: usize = 20;
 const FONDO: char = '░';
 
+#[derive(PartialEq)]
 enum Direccion {
     Arriba,
     Abajo,
     Izquierda,
     Derecha,
     Nulo,
-}
-enum Tipo {
-    Estatico,
-    Movimiento(),
 }
 struct Posicion {
     x: f64,
@@ -98,29 +95,31 @@ impl Pantalla {
 fn main() {
     let _ = crossterm::terminal::enable_raw_mode();
     let mut pantalla = Pantalla::new();
-    let mut snake = vec![Elemento::new(), Elemento::new()];
+    let mut snake = vec![Elemento::new()];
 
     snake[0].velocidad = 1.0;
     snake[0].direccion = Direccion::Arriba;
+    for _ in 0..8 {
+        snake.push(Elemento::new());
+    }
 
-    let mut buffer = snake[0].previa.clone();
     loop {
         pantalla.print();
         if let Some(direccion) = entrada_controles() {
-            snake[0].direccion = direccion;
+            if !girode180(&snake[0].direccion, &direccion) {
+                snake[0].direccion = direccion;
+            }
         }
-        // for element in &mut snake {
-        //     element.actualizar();
-        //     buffer = element.previa.clone();
-        //     pantalla.cambiar_pixel(&element.posicion, 'o');
-        // }
+        snake[0].actualizar();
+        pantalla.cambiar_pixel(&snake[0].posicion, 's');
 
-        // for indice in 1..snake.len() {
-        //     snake[indice].actualizar();
-        //     snake[indice].posicion = buffer.clone();
-        //     buffer = snake[indice].previa.clone();
-        //     pantalla.cambiar_pixel(&snake[indice].posicion, 'o');
-        // }
+        let mut buffer = snake[0].previa.clone();
+        for indice in 1..snake.len() {
+            snake[indice].actualizar();
+            snake[indice].posicion = buffer.clone();
+            buffer = snake[indice].previa.clone();
+            pantalla.cambiar_pixel(&snake[indice].posicion, 'o');
+        }
         // pantalla.cambiar_pixel(&snake[0].posicion, 'o');
         pantalla.cambiar_pixel(&snake[snake.len() - 1].previa, FONDO);
 
@@ -160,4 +159,13 @@ fn entrada_controles() -> Option<Direccion> {
         });
     }
     None
+}
+fn girode180(base: &Direccion, asignado: &Direccion) -> bool {
+    match (base, asignado) {
+        (Direccion::Arriba, Direccion::Abajo) => true,
+        (Direccion::Abajo, Direccion::Arriba) => true,
+        (Direccion::Derecha, Direccion::Izquierda) => true,
+        (Direccion::Izquierda, Direccion::Derecha) => true,
+        _ => false,
+    }
 }
