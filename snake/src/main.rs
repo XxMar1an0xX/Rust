@@ -1,5 +1,6 @@
 use clearscreen;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers, read};
+use rand::{self, Rng, rng};
 use std::time::Duration;
 const RESOLUTION: usize = 20;
 const FONDO: char = '░';
@@ -65,8 +66,8 @@ impl Elemento {
             }
         }
     }
-    fn colisiona_con(&self, objeto: Elemento) -> bool {
-        self.posicion.x == objeto.posicion.x && self.posicion.y == objeto.posicion.y
+    fn colisiona_con(&self, objeto: &Posicion) -> bool {
+        self.posicion.x == objeto.x && self.posicion.y == objeto.y
     }
 }
 
@@ -96,10 +97,19 @@ fn main() {
     let _ = crossterm::terminal::enable_raw_mode();
     let mut pantalla = Pantalla::new();
     let mut snake = vec![Elemento::new()];
+    let mut listadeposiciones: Vec<Posicion> = Vec::new();
+    for _ in 0..rng().random_range(1..=12) {
+        let manzana = Posicion {
+            x: rng().random_range(0..=20) as f64,
+            y: rng().random_range(0..=20) as f64,
+        };
+        pantalla.cambiar_pixel(&manzana, 'M');
+        listadeposiciones.push(manzana);
+    }
 
     snake[0].velocidad = 1.0;
     snake[0].direccion = Direccion::Arriba;
-    for _ in 0..8 {
+    for _ in 1..rng().random_range(2..=6) {
         snake.push(Elemento::new());
     }
 
@@ -109,6 +119,12 @@ fn main() {
             if !girode180(&snake[0].direccion, &direccion) {
                 snake[0].direccion = direccion;
             }
+        }
+        if listadeposiciones
+            .iter()
+            .any(|pos| snake[0].colisiona_con(pos))
+        {
+            snake.push(Elemento::new());
         }
         snake[0].actualizar();
         pantalla.cambiar_pixel(&snake[0].posicion, 's');
@@ -127,7 +143,7 @@ fn main() {
     }
 }
 fn entrada_controles() -> Option<Direccion> {
-    if event::poll(Duration::from_millis(500)).expect("no") {
+    if event::poll(Duration::from_millis(400)).expect("no") {
         return Some(match read().expect("error brutal") {
             Event::Key(KeyEvent {
                 code: KeyCode::Up,
