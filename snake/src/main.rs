@@ -1,7 +1,7 @@
 use clearscreen;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers, read};
 use rand::{self, Rng, rng};
-use std::time::Duration;
+use std::{thread::sleep, time::Duration, vec};
 const RESOLUTION: usize = 20;
 const FONDO: char = '░';
 
@@ -91,10 +91,14 @@ impl Pantalla {
         let columna: &mut Vec<char> = &mut self.0[posicion.y.round() as usize % RESOLUTION];
         columna[posicion.x.round() as usize % RESOLUTION] = caracter;
     }
+    // fn push(&mut self, cosa: Vec<char>) {
+    //     self.0.push(cosa);
+    // }
 }
 
 fn main() {
     let _ = crossterm::terminal::enable_raw_mode();
+    pantallainicio();
     let mut pantalla = Pantalla::new();
     let mut snake = vec![Elemento::new()];
     let mut listadeposiciones: Vec<Posicion> = Vec::new();
@@ -143,7 +147,7 @@ fn main() {
     }
 }
 fn entrada_controles() -> Option<Direccion> {
-    if event::poll(Duration::from_millis(400)).expect("no") {
+    if event::poll(Duration::from_millis(500)).expect("no") {
         return Some(match read().expect("error brutal") {
             Event::Key(KeyEvent {
                 code: KeyCode::Up,
@@ -176,6 +180,24 @@ fn entrada_controles() -> Option<Direccion> {
     }
     None
 }
+
+fn pantallainicio() {
+    let (longx, longy) = crossterm::terminal::size().unwrap_or((0, 0));
+    // let mut hola = Pantalla;
+    let mut vector = vec!['N'; longy as usize];
+    clearscreen::clear().expect("no funciono el borrado");
+    print!("\r");
+    for _ in 0..50 {
+        for caracter in &vector {
+            print!("{}", caracter);
+        }
+        print!("\r");
+
+        let _ = entrada_controles();
+        // clearscreen::clear().expect("no funciono el borrado")
+    }
+}
+
 fn girode180(base: &Direccion, asignado: &Direccion) -> bool {
     match (base, asignado) {
         (Direccion::Arriba, Direccion::Abajo) => true,
