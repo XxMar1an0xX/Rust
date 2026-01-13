@@ -1,72 +1,35 @@
-use std::{error::Error, time::Duration};
+use std::{error::Error, fmt::Formatter};
 
-use thirtyfour::prelude::*;
+use reqwest;
+use scraper::{Html, Selector};
 
-use std::thread;
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
-    let caps = DesiredCapabilities::firefox();
-    let driver = WebDriver::new("http://localhost:4444", caps).await?;
-    // Navigate to https://wikipedia.org.
+async fn main() -> Result<(), Box<dyn Error>> {
+    //NOTE: agarrar el sitio web
+    let link = "https://quotes.toscrape.com/";
+    println!("Buscando datos en {}", link);
 
-    driver.goto("https://olympus.pages.dev/").await?;
-    driver.maximize_window().await?;
+    //NOTE: agarrando el html de la pagina
+    let texto_fuente = reqwest::get(link).await?.text().await?;
 
-    let boton_redirige_olympus = driver
-        .find(By::XPath("/html/body/main/section[2]/a[1]"))
-        .await?;
-    boton_redirige_olympus.click().await?;
+    //NOTE: formatenadolo a html
+    let html_fuente = Html::parse_document(&texto_fuente);
+    // println!("==========\n html: \n {:?}", html_fuente);
 
-    println!(
-        "{:?}",
-        driver
-            .query(By::XPath(
-                "/html/body/div[1]/div/header/div/div[2]/button[1]"
-            ))
-            .exists()
-            .await?
-    );
-    let bloque_comp = driver
-        .find(By::Css("button.aspect-square:nth-child(1)"))
-        .await?;
-    let anuncio = driver.active_element().await?;
-    thread::sleep(Duration::from_secs(2));
-    anuncio.click().await?;
+    let seleccion_quote = Selector::parse(".quote").unwrap();
+    let seleccion_texto = Selector::parse(".text").unwrap();
 
-    println!("clicable? {:?}", anuncio.is_clickable().await?);
-    println!("{:?}", anuncio.text().await?);
-
-    // let elem_lupa = driver
-    //     .find(By::XPath(
-    //         "/html/body/div[1]/div/header/div/div[2]/button[1]",
-    //     ))
-    //     .await?;
-    // elem_lupa.click().await?;
-
-    // let cuadro_texto = driver
-    //     .find(By::XPath("/html/body/article/div/main/div/div[1]/div/div"))
-    //     .await?;
-    // cuadro_texto.send_keys("Loco Frontera").await?;
-
-    // let manwa_boton = driver.find(By::Name("Loco Frontera")).await?;
-    // manwa_boton.click().await?;
-    // Find element from element.
-    // let elem_text = elem_form.find(By::Id("searchInput")).await?;
-
-    // Type in the search terms.
-    // elem_text.send_keys("selenium").await?;
-
-    // Click the search button.
-    // let elem_button = elem_form.find(By::Css("button[type='submit']")).await?;
-    // elem_button.click().await?;
-
-    // Look for header to implicitly wait for the page to load.
-    // driver.query(By::ClassName("firstHeading")).first().await?;
-    // assert_eq!(driver.title().await?, "Selenium - Wikipedia");
-    thread::sleep(Duration::from_secs(5));
-
-    // Always explicitly close the browser.
-    driver.quit().await?;
-
+    for bloque in html_fuente.select(&seleccion_quote) {
+        println!("== {:#?} ==\n", bloque);
+        let frase = bloque
+            .select(&seleccion_texto)
+            .next()
+            .map(|palabras| {
+                println!("> {:?} <\n", palabras.text().collect::<String>());
+                palabras.text().collect::<Vec<_>>().join("")
+            })
+            .unwrap_or_default();
+        println!("\n {}", frase);
+    }
     Ok(())
 }
