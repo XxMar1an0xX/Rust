@@ -1,44 +1,13 @@
-use std::{error::Error, fmt::Formatter};
-
-use reqwest::{self, Response};
+use reqwest::blocking::{Response, get};
 use scraper::{Html, Selector};
-use tokio::fs::File;
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    //NOTE: agarrar el sitio web
-    let link = "https://quotes.toscrape.com/";
-    println!("Buscando datos en {}", link);
-
-    //NOTE: agarrando el html de la pagina
-    let texto_fuente = reqwest::get(link).await?.text().await?;
-
-    //NOTE: formatenadolo a html
-    let html_fuente = Html::parse_document(&texto_fuente);
-    // println!("==========\n html: \n {:?}", html_fuente);
-
-    let seleccion_quote = Selector::parse(".quote").unwrap();
-    let seleccion_texto = Selector::parse(".text").unwrap();
-
-    for bloque in html_fuente.select(&seleccion_quote) {
-        // dbg!(bloque);
-        let frase = bloque
-            .select(&seleccion_texto)
-            .next()
-            .map(|palabras| {
-                // dbg!(palabras.text().collect::<String>());
-                palabras.text().collect::<Vec<_>>().join("")
-            })
-            .unwrap_or_default();
-        // dbg!(frase);
-    }
-    olympus().await?;
-    Ok(())
-}
-async fn olympus() -> Result<(), Box<dyn Error>> {
+use std::fs::File;
+use std::io::copy;
+use std::{error::Error, fmt::Formatter};
+fn main() -> Result<(), Box<dyn Error>> {
     println!("Olympus empieza...");
     let link = "https://olympusbiblioteca.com";
     let mut link_agregado = "";
-    let fuente_raw = reqwest::get(link).await?.text().await?;
+    let fuente_raw = get(link)?.text()?;
 
     let html_fuente = Html::parse_document(&fuente_raw);
 
@@ -68,14 +37,15 @@ async fn olympus() -> Result<(), Box<dyn Error>> {
 
         println!("{}: {}", titulo, link_agregado);
     }
-    frontera(link, link_agregado).await?;
+    frontera(link, link_agregado);
 
     Ok(())
 }
-async fn frontera(link_base: &str, agregado_manwha: &str) -> Result<(), Box<dyn Error>> {
+
+fn frontera(link_base: &str, agregado_manwha: &str) -> Result<(), Box<dyn Error>> {
     println!("Frontera Empieza BVVV");
     let link_manwha = link_base.to_string() + agregado_manwha;
-    let fuente_sin_formato = reqwest::get(link_manwha.as_str()).await?.text().await?;
+    let fuente_sin_formato = get(link_manwha.as_str())?.text()?;
 
     let codigo_fuente = Html::parse_document(&fuente_sin_formato);
 
@@ -91,17 +61,17 @@ async fn frontera(link_base: &str, agregado_manwha: &str) -> Result<(), Box<dyn 
         .unwrap(); //NOTE: ??
     dbg!(agregado_url);
 
-    // let imagen = write("hola.webp", extraer_img(link_base, agregado_url).await?);
+    // let imagen = write("hola.webp", extraer_img(link_base, agregado_url)?);
 
-    let mut imagen = File::create("imagen.jpg").await?;
-    let mut response = extraer_img(link_base, agregado_url).await?;
-    tokio::io::copy(&mut response.as_ref(), &mut imagen).await?;
-    // extraer_img(link_base, agregado_url).await?;
+    let mut imagen = File::create("imagen.jpg")?;
+    let mut response = extraer_img(link_base, agregado_url)?;
+    copy(&mut response, &mut imagen)?;
+    // extraer_img(link_base, agregado_url)?;
     Ok(())
 }
-async fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<String, Box<dyn Error>> {
+fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn Error>> {
     let link_cap = link_base.to_string() + agregado_cap;
-    let respuesta = reqwest::get(link_cap.as_str()).await?.text().await?;
+    let respuesta = get(link_cap.as_str())?.text()?;
     let codigo_fuente = Html::parse_document(&respuesta);
     let seleccion_img = Selector::parse("img.object-cover,rounded-inherit,w-full,h-full").unwrap();
 
@@ -112,7 +82,7 @@ async fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<String, Box<
         .unwrap();
 
     dbg!(&link_img);
-    let fuente_img = reqwest::get(link_img).await?.text().await?;
+    let fuente_img = get(link_img)?/* .text()? */;
     // dbg!(&fuente_img);
     Ok(fuente_img)
 }
