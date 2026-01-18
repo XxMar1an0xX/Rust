@@ -88,7 +88,8 @@ async fn frontera(link: String) -> Result<(), Box<dyn Error>> {
         .select(&seleccion_cap1)
         .map(|bloque| bloque.attr("href"))
         .find(|&agregado| agregado.is_some())
-        .unwrap();
+        .unwrap()
+        .unwrap(); //NOTE: ??
     dbg!(agregado_url);
 
     Ok(())
