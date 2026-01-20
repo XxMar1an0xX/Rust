@@ -70,44 +70,44 @@ fn frontera(link_base: &str, agregado_manwha: &str) -> Result<(), Box<dyn Error>
     let mut imagen = File::create("imagen.jpg")?;
     let mut response = extraer_img(link_base, agregado_url)?;
     // copy(&mut response, &mut imagen)?; //NOTE: puede servir
-    fs::write("hola.webp", response.bytes()?);
+    // fs::write("hola.webp", response.bytes()?);
     // extraer_img(link_base, agregado_url)?;
     Ok(())
 }
 fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn Error>> {
     let link_cap = link_base.to_string() + agregado_cap;
     let respuesta = get(link_cap.as_str())?.text()?;
+    // let respuesta =
+    //     get("https://olympusbiblioteca.com/capitulo/67184/comic-loco-frontera-20260119-081341644")?
+    //         .text()?;
+
     let codigo_fuente = Html::parse_document(&respuesta);
     let seleccion_manwha =
         Selector::parse(".flex-col,rounded-xl,overflow-hidden,shadow-xl").unwrap();
     let seleccion_img = Selector::parse("img.object-cover,rounded-inherit,w-full,h-full").unwrap();
     // let seleccion_titulo = Selector::parse("div.flex-between,w-full").unwrap();
     let seleccion_titulo = Selector::parse("header.h-18,bg-gray-800,relative,z-20").unwrap();
-    let seleccion_cap_num = Selector::parse(".flex-center").unwrap();
+    let seleccion_cap_num = Selector::parse("title").unwrap();
 
-    let seccion_titulo = codigo_fuente.select(&seleccion_titulo).next().unwrap();
-    dbg!(&seccion_titulo.html());
+    // dbg!(&seccion_titulo.html());
 
-    let nombre_carpeta = seccion_titulo
+    let nombre_carpeta = codigo_fuente
+        .root_element()
         .select(&seleccion_cap_num)
         .next()
-        .map(|bloque| {
-            dbg!(&bloque);
-            bloque.text().collect::<String>()
-        })
-        .unwrap_or_default();
-    dbg!(&nombre_carpeta);
+        .map(|bloque| bloque.text().collect::<String>())
+        .unwrap()
+        .matches(|texto: char| texto.is_numeric() || texto == '.')
+        .collect::<String>();
+    // dbg!(&nombre_carpeta);
+
+    let directorio =
+        "/home/ruiz/Descargas/Lloyd_Frontera/".to_string() + "capitulo " + &nombre_carpeta;
+    dbg!(&directorio);
+    dbg!(fs::create_dir_all(&directorio));
 
     let manwha_completo = codigo_fuente.select(&seleccion_manwha).next().unwrap();
     // dbg!(&manwha_completo);
-
-    for link in manwha_completo
-        .select(&seleccion_img)
-        .filter_map(|bloque| bloque.attr("src"))
-    {
-        let nombre_imagen = &link[(74 - 9)..];
-        // dbg!(nombre_imagen);
-    }
 
     let link_img = codigo_fuente
         .select(&seleccion_img)
@@ -116,6 +116,21 @@ fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn 
         .unwrap();
 
     dbg!(&link_img);
+
+    for link in manwha_completo
+        .select(&seleccion_img)
+        .filter_map(|bloque| bloque.attr("src"))
+    {
+        let nombre_imagen = &link[(74 - 9)..];
+        dbg!(nombre_imagen);
+        let fuente_img = get(link)?/* .text()? */;
+
+        fs::write(
+            (directorio.clone() + "/" + nombre_imagen).as_str(),
+            fuente_img.bytes()?,
+        );
+    }
+
     let fuente_img = get(link_img)?/* .text()? */;
     // dbg!(&fuente_img);
     Ok(fuente_img)
