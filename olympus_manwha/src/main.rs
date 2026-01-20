@@ -1,3 +1,4 @@
+use dirs;
 use reqwest::blocking::{Response, get};
 use scraper::{Html, Selector};
 use std::fs::{self, File};
@@ -101,10 +102,15 @@ fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn 
         .collect::<String>();
     // dbg!(&nombre_carpeta);
 
-    let directorio =
-        "/home/ruiz/Descargas/Lloyd_Frontera/".to_string() + "capitulo " + &nombre_carpeta;
-    dbg!(&directorio);
-    dbg!(fs::create_dir_all(&directorio));
+    let directorio = dirs::home_dir()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap()
+        .to_string()
+        + "/Descargas/Lloyd_Frontera/"
+        + "capitulo "
+        + &nombre_carpeta;
+    fs::create_dir_all(&directorio);
 
     let manwha_completo = codigo_fuente.select(&seleccion_manwha).next().unwrap();
     // dbg!(&manwha_completo);
@@ -121,6 +127,7 @@ fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn 
         .filter_map(|bloque| bloque.attr("src"))
     {
         let nombre_imagen = &link[(74 - 9)..];
+        dbg!(&nombre_imagen);
         let fuente_img = get(link)?/* .text()? */;
 
         fs::write(
