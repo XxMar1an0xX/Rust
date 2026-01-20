@@ -109,20 +109,18 @@ fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn 
     let manwha_completo = codigo_fuente.select(&seleccion_manwha).next().unwrap();
     // dbg!(&manwha_completo);
 
+    //NOTE: esto es opcional
     let link_img = codigo_fuente
         .select(&seleccion_img)
         .filter_map(|bloque| bloque.attr("src"))
         .nth(4)
         .unwrap();
 
-    dbg!(&link_img);
-
-    for link in manwha_completo
+    for link in manwha_completo //NOTE: esto si es la parte importante
         .select(&seleccion_img)
         .filter_map(|bloque| bloque.attr("src"))
     {
         let nombre_imagen = &link[(74 - 9)..];
-        dbg!(nombre_imagen);
         let fuente_img = get(link)?/* .text()? */;
 
         fs::write(
