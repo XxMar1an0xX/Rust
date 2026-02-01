@@ -7,7 +7,6 @@ use std::{error::Error, fmt::Formatter};
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Olympus empieza...");
     let link = "https://olympusbiblioteca.com";
-    let mut link_agregado = "";
     //NOTE: aqui se "llama" al link para "ver" la pagina
     let fuente_raw = get(link)?.text()?;
 
@@ -15,36 +14,79 @@ fn main() -> Result<(), Box<dyn Error>> {
     let html_fuente = Html::parse_document(&fuente_raw);
 
     //NOTE: aqui son los selectores, en base a la estructura del html
-    let seleccion_manwha =
-        Selector::parse("a.p-4,relative,bg-gray-800,rounded-md,overflow-hidden").unwrap();
-    // Selector::parse(".flex,flex-col,gap-2,snap-start,shrink-0").unwrap();
-    let seleccion_texto = Selector::parse("h3.font-medium,text-lg,h-13,line-clamp-2").unwrap();
-    // dbg!(&html_fuente);
 
     //NOTE: aqui es la iteracion de bloques flitradon en base a una seleccion
-    for bloque_manwha in html_fuente.select(&seleccion_manwha) {
-        // dbg!(bloque_manwha.clone());
 
-        let titulo = bloque_manwha
+    let (nombre, agregado_manwha) = nombre_y_link(&html_fuente, "Loco Frontera")?;
+
+    let agregado_cap = primer_cap(link.to_string(), agregado_manwha)?;
+
+    let directorio = dirs::home_dir()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap()
+        .to_string()
+        + "/Descargas/"
+        + nombre.as_str();
+    // + "capitulo "
+    // + &nombre_carpeta;
+    fs::create_dir_all(&directorio);
+
+    Ok(())
+}
+
+fn nombre_y_link(codigo_fuente: &Html, nombre: &str) -> Result<(String, String), Box<dyn Error>> {
+    let mut agregado_manwha = "";
+    let mut titulo_manwha = String::new();
+
+    let seleccion_manwha =
+        Selector::parse("a.p-4,relative,bg-gray-800,rounded-md,overflow-hidden").unwrap();
+    let seleccion_texto = Selector::parse("h3.font-medium,text-lg,h-13,line-clamp-2").unwrap();
+
+    for bloque_manwha in codigo_fuente.select(&seleccion_manwha) {
+        titulo_manwha = bloque_manwha
             .select(&seleccion_texto)
             //NOTE: seleccion del texto dentro del bloque
             .next()
-            .map(|x| {
-                // dbg!(x);
-                x.text().collect::<String>()
-            })
+            .map(|x| x.text().collect::<String>())
             .unwrap_or_default();
 
         //NOTE: extraccion de link por medio de attributo de bloque
-        if titulo == "Loco Frontera".to_string() {
-            link_agregado = bloque_manwha.attr("href").unwrap_or_default()
+        if titulo_manwha == nombre.to_string() {
+            agregado_manwha = bloque_manwha.attr("href").unwrap_or_default();
+            // dbg!((&titulo_manwha, &agregado_manwha));
+            break;
         }
-
-        println!("{}: {}", titulo, link_agregado);
     }
-    frontera(link, link_agregado);
 
-    Ok(())
+    return Ok((titulo_manwha, agregado_manwha.to_owned()));
+}
+fn primer_cap(link_base: String, agregado: String) -> Result<String, Box<dyn Error>> {
+    let mut agregado_url = String::new();
+    let codigo_fuente = extraer_codigo_fuente(link_base + agregado.as_str())?;
+
+    let seleccion_cap1 =
+        Selector::parse("a.text-amber-300,w-full,flex-between,p-3,rounded sf-ripple-container")
+            .unwrap();
+
+    agregado_url = codigo_fuente
+        .select(&seleccion_cap1)
+        .map(|bloque| bloque.attr("href"))
+        .find(|&agregado| agregado.is_some())
+        .unwrap()
+        .unwrap()
+        .to_string(); //NOTE: ??
+
+    dbg!(&agregado_url);
+    Ok(agregado_url)
+}
+
+fn extraer_codigo_fuente(link: String) -> Result<Html, Box<dyn Error>> {
+    let mut codigo_fuente = Html::parse_fragment("");
+    let pagina = get(link.as_str())?.text()?;
+    codigo_fuente = Html::parse_fragment(&pagina);
+
+    Ok(codigo_fuente)
 }
 
 fn frontera(link_base: &str, agregado_manwha: &str) -> Result<(), Box<dyn Error>> {
@@ -54,22 +96,12 @@ fn frontera(link_base: &str, agregado_manwha: &str) -> Result<(), Box<dyn Error>
 
     let codigo_fuente = Html::parse_document(&fuente_sin_formato);
 
-    let seleccion_cap1 =
-        Selector::parse("a.text-amber-300,w-full,flex-between,p-3,rounded sf-ripple-container")
-            .unwrap();
-
-    let agregado_url = codigo_fuente
-        .select(&seleccion_cap1)
-        .map(|bloque| bloque.attr("href"))
-        .find(|&agregado| agregado.is_some())
-        .unwrap()
-        .unwrap(); //NOTE: ??
-    dbg!(agregado_url);
+    // dbg!(agregado_url);
 
     // let imagen = write("hola.webp", extraer_img(link_base, agregado_url)?);
 
-    let mut imagen = File::create("imagen.jpg")?;
-    let mut response = extraer_img(link_base, agregado_url)?;
+    // let mut imagen = File::create("imagen.jpg")?;
+    // let mut response = extraer_img(link_base, agregado_url)?;
     // copy(&mut response, &mut imagen)?; //NOTE: puede servir
     // fs::write("hola.webp", response.bytes()?);
     // extraer_img(link_base, agregado_url)?;
@@ -102,16 +134,6 @@ fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn 
         .collect::<String>();
     // dbg!(&nombre_carpeta);
 
-    let directorio = dirs::home_dir()
-        .unwrap_or_default()
-        .to_str()
-        .unwrap()
-        .to_string()
-        + "/Descargas/Lloyd_Frontera/"
-        + "capitulo "
-        + &nombre_carpeta;
-    fs::create_dir_all(&directorio);
-
     let manwha_completo = codigo_fuente.select(&seleccion_manwha).next().unwrap();
     // dbg!(&manwha_completo);
 
@@ -137,6 +159,35 @@ fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn 
     }
 
     let fuente_img = get(link_img)?/* .text()? */;
+    let _ = link_siguiente(link_cap);
     // dbg!(&fuente_img);
     Ok(fuente_img)
+}
+fn link_siguiente(link_cap: String) -> Result<(), Box<dyn Error>> {
+    let respuesta = get(link_cap.as_str())?.text()?;
+    let codigo_fuente = Html::parse_document(&respuesta);
+
+    let seleccion_flecha = Selector::parse(
+        "a.h-12,px-4,flex-center,gap-2,rounded-xl,ransition-color,sf-ripple-container",
+    )
+    .unwrap();
+
+    let flecha = codigo_fuente
+        .select(&seleccion_flecha)
+        .next_back()
+        .unwrap()
+        .attr("href")
+        .unwrap();
+    dbg!(flecha);
+    dbg!((link_cap + flecha));
+    Ok(())
+}
+
+fn test(codigo_fuente: Html, selector: Selector) -> Result<(), Box<dyn Error>> {
+    for bloque_test in codigo_fuente.select(&selector) {
+        dbg!(bloque_test);
+        dbg!(bloque_test.text().collect::<String>());
+        dbg!(bloque_test.attr("href"));
+    }
+    Ok(())
 }
