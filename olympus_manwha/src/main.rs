@@ -6,20 +6,14 @@ use std::io::copy;
 use std::{error::Error, fmt::Formatter};
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Olympus empieza...");
+
     let link = "https://olympusbiblioteca.com";
-    //NOTE: aqui se "llama" al link para "ver" la pagina
     let fuente_raw = get(link)?.text()?;
 
     //NOTE: aqui se lo formatea a HTML para que se pueda extraer ciertas partes o "bloques"
     let html_fuente = Html::parse_document(&fuente_raw);
 
-    //NOTE: aqui son los selectores, en base a la estructura del html
-
-    //NOTE: aqui es la iteracion de bloques flitradon en base a una seleccion
-
     let (nombre, agregado_manwha) = nombre_y_link(&html_fuente, "Loco Frontera")?;
-
-    let agregado_cap = primer_cap(link.to_string(), agregado_manwha)?;
 
     let directorio = dirs::home_dir()
         .unwrap_or_default()
@@ -28,10 +22,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         .to_string()
         + "/Descargas/"
         + nombre.as_str();
-    // + "capitulo "
-    // + &nombre_carpeta;
-    fs::create_dir_all(&directorio);
+    let _ = fs::create_dir_all(&directorio)?;
 
+    let mut agregado_cap = primer_cap(link.to_string(), agregado_manwha)?;
+
+    loop {
+        let _ = extraer_cap(link.to_string(), &agregado_cap, &directorio)?;
+
+        let siguiente = link_siguiente(link.to_string(), &agregado_cap)?;
+
+        dbg!(&(link.to_string() + &siguiente));
+        agregado_cap = siguiente;
+        if agregado_cap == "".to_string() {
+            break;
+        }
+    }
+
+    println!("Ya c descargo todo bv");
     Ok(())
 }
 
@@ -81,6 +88,45 @@ fn primer_cap(link_base: String, agregado: String) -> Result<String, Box<dyn Err
     Ok(agregado_url)
 }
 
+fn extraer_cap(
+    link_base: String,
+    agregado_cap: &str,
+    direccion: &str,
+) -> Result<(), Box<dyn Error>> {
+    let codigo_fuente = extraer_codigo_fuente(link_base + &agregado_cap)?;
+    let seleccion_imgs = Selector::parse("img.object-cover,rounded-inherit,w-full,h-full").unwrap();
+    let seleccion_cap_num = Selector::parse("title").unwrap();
+
+    let num_cap = codigo_fuente
+        .select(&seleccion_cap_num)
+        .next()
+        .map(|bloque| bloque.text().collect::<String>())
+        .unwrap()
+        .matches(|texto: char| texto.is_numeric() || texto == '.')
+        .collect::<String>();
+
+    let direccion_cap = direccion.to_string() + "/capitulo " + &num_cap;
+    let _ = fs::create_dir_all(&direccion_cap);
+
+    for imagen_link in codigo_fuente
+        .select(&seleccion_imgs)
+        .filter(|bloque| bloque.attr("srcset").is_none())
+        .filter_map(|bloque| bloque.attr("src"))
+    {
+        let nombre_imagen = &imagen_link[(74 - 9)..];
+        println!("descargando: {}", nombre_imagen.to_string());
+
+        let fuente_img = get(imagen_link)?;
+
+        let _ = fs::write(
+            (direccion_cap.clone() + "/" + nombre_imagen).as_str(),
+            fuente_img.bytes()?,
+        )?;
+    }
+
+    Ok(())
+}
+
 fn extraer_codigo_fuente(link: String) -> Result<Html, Box<dyn Error>> {
     let mut codigo_fuente = Html::parse_fragment("");
     let pagina = get(link.as_str())?.text()?;
@@ -89,98 +135,21 @@ fn extraer_codigo_fuente(link: String) -> Result<Html, Box<dyn Error>> {
     Ok(codigo_fuente)
 }
 
-fn frontera(link_base: &str, agregado_manwha: &str) -> Result<(), Box<dyn Error>> {
-    println!("Frontera Empieza BVVV");
-    let link_manwha = link_base.to_string() + agregado_manwha;
-    let fuente_sin_formato = get(link_manwha.as_str())?.text()?;
-
-    let codigo_fuente = Html::parse_document(&fuente_sin_formato);
-
-    // dbg!(agregado_url);
-
-    // let imagen = write("hola.webp", extraer_img(link_base, agregado_url)?);
-
-    // let mut imagen = File::create("imagen.jpg")?;
-    // let mut response = extraer_img(link_base, agregado_url)?;
-    // copy(&mut response, &mut imagen)?; //NOTE: puede servir
-    // fs::write("hola.webp", response.bytes()?);
-    // extraer_img(link_base, agregado_url)?;
-    Ok(())
-}
-fn extraer_img(link_base: &str, agregado_cap: &str) -> Result<Response, Box<dyn Error>> {
-    let link_cap = link_base.to_string() + agregado_cap;
-    let respuesta = get(link_cap.as_str())?.text()?;
-    // let respuesta =
-    //     get("https://olympusbiblioteca.com/capitulo/67184/comic-loco-frontera-20260119-081341644")?
-    //         .text()?;
-
-    let codigo_fuente = Html::parse_document(&respuesta);
-    let seleccion_manwha =
-        Selector::parse(".flex-col,rounded-xl,overflow-hidden,shadow-xl").unwrap();
-    let seleccion_img = Selector::parse("img.object-cover,rounded-inherit,w-full,h-full").unwrap();
-    // let seleccion_titulo = Selector::parse("div.flex-between,w-full").unwrap();
-    let seleccion_titulo = Selector::parse("header.h-18,bg-gray-800,relative,z-20").unwrap();
-    let seleccion_cap_num = Selector::parse("title").unwrap();
-
-    // dbg!(&seccion_titulo.html());
-
-    let nombre_carpeta = codigo_fuente
-        .root_element()
-        .select(&seleccion_cap_num)
-        .next()
-        .map(|bloque| bloque.text().collect::<String>())
-        .unwrap()
-        .matches(|texto: char| texto.is_numeric() || texto == '.')
-        .collect::<String>();
-    // dbg!(&nombre_carpeta);
-
-    let manwha_completo = codigo_fuente.select(&seleccion_manwha).next().unwrap();
-    // dbg!(&manwha_completo);
-
-    //NOTE: esto es opcional
-    let link_img = codigo_fuente
-        .select(&seleccion_img)
-        .filter_map(|bloque| bloque.attr("src"))
-        .nth(4)
-        .unwrap();
-
-    for link in manwha_completo //NOTE: esto si es la parte importante
-        .select(&seleccion_img)
-        .filter_map(|bloque| bloque.attr("src"))
-    {
-        let nombre_imagen = &link[(74 - 9)..];
-        dbg!(&nombre_imagen);
-        let fuente_img = get(link)?/* .text()? */;
-
-        fs::write(
-            (directorio.clone() + "/" + nombre_imagen).as_str(),
-            fuente_img.bytes()?,
-        );
-    }
-
-    let fuente_img = get(link_img)?/* .text()? */;
-    let _ = link_siguiente(link_cap);
-    // dbg!(&fuente_img);
-    Ok(fuente_img)
-}
-fn link_siguiente(link_cap: String) -> Result<(), Box<dyn Error>> {
-    let respuesta = get(link_cap.as_str())?.text()?;
-    let codigo_fuente = Html::parse_document(&respuesta);
+fn link_siguiente(link_base: String, agregado_cap: &str) -> Result<String, Box<dyn Error>> {
+    let codigo_fuente = extraer_codigo_fuente(link_base + agregado_cap)?;
 
     let seleccion_flecha = Selector::parse(
         "a.h-12,px-4,flex-center,gap-2,rounded-xl,ransition-color,sf-ripple-container",
     )
     .unwrap();
 
-    let flecha = codigo_fuente
+    let link_siguiente: &str = codigo_fuente
         .select(&seleccion_flecha)
         .next_back()
         .unwrap()
         .attr("href")
         .unwrap();
-    dbg!(flecha);
-    dbg!((link_cap + flecha));
-    Ok(())
+    Ok(link_siguiente.to_string())
 }
 
 fn test(codigo_fuente: Html, selector: Selector) -> Result<(), Box<dyn Error>> {
