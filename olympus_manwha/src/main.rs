@@ -5,6 +5,8 @@ use std::fs::{self, File};
 use std::io::copy;
 use std::{error::Error, fmt::Formatter};
 fn main() -> Result<(), Box<dyn Error>> {
+    //TODO: configurar como un solo cliente (reqwest)
+    //TODO: checkear por archivos ya hechos asi no re-hacer
     println!("Olympus empieza...");
 
     let link = "https://olympusbiblioteca.com";
