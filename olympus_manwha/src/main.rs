@@ -7,15 +7,17 @@ use std::path::Path;
 use std::{error::Error, fmt::Formatter};
 fn main() -> Result<(), Box<dyn Error>> {
     //TODO: configurar como un solo cliente (reqwest)
+    //TODO: hacer algoritmo para sacar el nombre desde el link automatic automaticamente
     println!("Olympus empieza...");
 
     let link = "https://olympusbiblioteca.com";
     let fuente_raw = get(link)?.text()?;
+    let manwha = "El hijo menor del maestro de la espada";
 
     //NOTE: aqui se lo formatea a HTML para que se pueda extraer ciertas partes o "bloques"
     let html_fuente = Html::parse_document(&fuente_raw);
 
-    let (nombre, agregado_manwha) = nombre_y_link(&html_fuente, "Loco Frontera")?;
+    let (nombre, agregado_manwha) = nombre_y_link(&html_fuente, manwha)?;
 
     let directorio = dirs::home_dir()
         .unwrap_or_default()
@@ -151,7 +153,7 @@ fn link_siguiente(link_base: String, agregado_cap: &str) -> Result<String, Box<d
         .next_back()
         .unwrap()
         .attr("href")
-        .unwrap();
+        .unwrap_or("");
     Ok(link_siguiente.to_string())
 }
 
