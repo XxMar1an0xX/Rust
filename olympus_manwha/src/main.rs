@@ -3,9 +3,9 @@ use reqwest::blocking::{Response, get};
 use scraper::{Html, Selector};
 use std::fs::{self, File};
 use std::io::copy;
+use std::path::Path;
 use std::{error::Error, fmt::Formatter};
 fn main() -> Result<(), Box<dyn Error>> {
-    //TODO: configurar como un solo cliente (reqwest)
     //TODO: checkear por archivos ya hechos asi no re-hacer
     println!("Olympus empieza...");
 
@@ -106,6 +106,7 @@ fn extraer_cap(
         .unwrap()
         .matches(|texto: char| texto.is_numeric() || texto == '.')
         .collect::<String>();
+    println!(">>Descargando cap {}", &num_cap);
 
     let direccion_cap = direccion.to_string() + "/capitulo " + &num_cap;
     let _ = fs::create_dir_all(&direccion_cap);
@@ -118,12 +119,12 @@ fn extraer_cap(
         let nombre_imagen = &imagen_link[(74 - 9)..];
         println!("descargando: {}", nombre_imagen.to_string());
 
-        let fuente_img = get(imagen_link)?;
-
-        let _ = fs::write(
-            (direccion_cap.clone() + "/" + nombre_imagen).as_str(),
-            fuente_img.bytes()?,
-        )?;
+        let direccion_imagen = direccion_cap.clone() + "/" + nombre_imagen;
+        if Path::exists(Path::new(&direccion_imagen)) {
+        } else {
+            let fuente_img = get(imagen_link)?;
+            fs::write(&direccion_imagen, fuente_img.bytes()?)?;
+        }
     }
 
     Ok(())
