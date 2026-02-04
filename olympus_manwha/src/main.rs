@@ -30,16 +30,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut agregado_cap = primer_cap(link.to_string(), agregado_manwha)?;
 
-    loop {
+    while agregado_cap != agregado_manwha {
         let _ = extraer_cap(link.to_string(), &agregado_cap, &directorio)?;
 
         let siguiente = link_siguiente(link.to_string(), &agregado_cap)?;
 
         dbg!(&(link.to_string() + &siguiente));
         agregado_cap = siguiente;
-        if agregado_cap == "".to_string() {
-            break;
-        }
     }
 
     println!("Ya c descargo todo bv");
