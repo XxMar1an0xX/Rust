@@ -7,7 +7,6 @@ use std::path::Path;
 use std::{error::Error, fmt::Formatter};
 fn main() -> Result<(), Box<dyn Error>> {
     //TODO: configurar como un solo cliente (reqwest)
-    //TODO: hacer algoritmo para sacar el nombre desde el link automatic automaticamente
     println!("Olympus empieza...");
 
     let link = "https://olympusbiblioteca.com";
@@ -115,7 +114,7 @@ fn extraer_cap(
         .filter(|bloque| bloque.attr("srcset").is_none())
         .filter_map(|bloque| bloque.attr("src"))
     {
-        let nombre_imagen = &imagen_link[(74 - 9)..];
+        let nombre_imagen = nombre_imagen(imagen_link);
         println!("descargando: {}", nombre_imagen.to_string());
 
         let direccion_imagen = direccion_cap.clone() + "/" + nombre_imagen;
@@ -135,6 +134,16 @@ fn extraer_codigo_fuente(link: String) -> Result<Html, Box<dyn Error>> {
     codigo_fuente = Html::parse_fragment(&pagina);
 
     Ok(codigo_fuente)
+}
+fn nombre_imagen(link: &str) -> &str {
+    let posicion = link
+        .chars()
+        .rev()
+        .position(|caracter| caracter == '/')
+        .unwrap_or_default();
+
+    // dbg!(&link[(link.len() - posicion)..]);
+    &link[(link.len() - posicion)..]
 }
 
 fn link_siguiente(link_base: String, agregado_cap: &str) -> Result<String, Box<dyn Error>> {
