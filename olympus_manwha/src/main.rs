@@ -9,9 +9,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     //TODO: configurar como un solo cliente (reqwest)
     println!("Olympus empieza...");
 
-    let link = "https://olympusbiblioteca.com";
+    let link = "https://olympusxyz.com";
     let fuente_raw = get(link)?.text()?;
-    let manwha = "El hijo menor del maestro de la espada";
+    let manwha = "Loco Frontera";
 
     //NOTE: aqui se lo formatea a HTML para que se pueda extraer ciertas partes o "bloques"
     let html_fuente = Html::parse_document(&fuente_raw);
@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         + nombre.as_str();
     let _ = fs::create_dir_all(&directorio)?;
 
-    let mut agregado_cap = primer_cap(link.to_string(), agregado_manwha)?;
+    let mut agregado_cap = primer_cap(link.to_string(), agregado_manwha.clone())?;
 
     while agregado_cap != agregado_manwha {
         let _ = extraer_cap(link.to_string(), &agregado_cap, &directorio)?;
